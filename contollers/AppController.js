@@ -23,3 +23,11 @@ class AppController {
     }
   }
 
+  // Add controller method to retrieve user and file statistics
+  static async getStats(req, res) {
+    const users = await dbClient.nbUsers();
+    const files = await dbClient.nbFiles();
+
+    res.status(200).send({ "users": users, "files": files })
+  }
+}
