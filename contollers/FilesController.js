@@ -115,3 +115,51 @@ class FilesController {
     } catch (err) {
       return res.status(400).send({ error: 'New File Object not Created '});
     }
+
+    //
+    try {
+        // Insert new file object into database
+        const fileDocs = dbClient.db.collection('files');
+
+        if (fileType === 'folder') {
+          const result = await fileDocs.insertOne(newFolderObject);
+          newFolderObject._id = result.insertedId;
+          return res.status(201).send(newFolderObject);
+        }
+
+        // Write to new file
+        const decodedFileData = Buffer.from(fileData, 'base64').toString('ascii');
+        const finalPath = `${filePath}/${uuidv4()}`;
+        newFileObject.localPath = finalPath;
+
+        const result = await fileDocs.insertOne(newFileObject);
+        newFileObject._id = result.insertedId;
+
+        // Creates parent directory for file creation
+        fs.mkdir(filePath, { recursive: true }, (err) => {
+          if (err) {
+            console.error(err);
+          }
+        });
+
+        fs.writeFile(finalPath, decodedFileData, err => {
+          if (err) {
+            console.error(err);
+          } else {
+            console.log('File created successfully');
+          }
+        });
+
+        fileQueue.add({
+          fileId: newFileObject._id,
+          userId: userId
+        });
+
+        // Take return from inserted document and create object for response
+        return res.status(201).send(newFileObject);
+      } catch (err) {
+        console.error(err);
+        return res.status(400).send({ error: 'File upload failed' });
+      }
+    }
+
