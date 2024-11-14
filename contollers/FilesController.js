@@ -233,9 +233,9 @@ class FilesController {
       res.status(401).send({ error: 'Unauthorized' });
     }
 
-    // Pagination - default is 0 if not specified
+    // Pagination
     const page = parseInt(req.query.page) || 0;
-    const pageSize = 20; // TESTED WITH 5
+    const pageSize = 20;
     const skip = page * pageSize;
 
     // Find all files by userId or parentId
