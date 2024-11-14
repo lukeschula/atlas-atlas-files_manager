@@ -207,3 +207,53 @@ class FilesController {
     }
   }
 
+  // Retrieves Files that a user owns by parentId
+   static async getIndex(req, res) {
+    // Authorize User by Token (current user)
+
+    let userId;
+
+    try {
+      const token = req.headers['x-token'];
+
+      // Returns token from Redis
+      const fullToken = `auth_${token}`;
+      userId = await redisClient.get(fullToken);
+
+      // Returns userId from MongoDB
+      const userDocs = dbClient.db.collection('users');
+      const existingUser = await userDocs.findOne({ _id: ObjectID(userId) });
+
+      // User does not exist: 401
+      if (!existingUser) {
+        throw err;
+      }
+    } catch (err) {
+      console.error(err);
+      res.status(401).send({ error: 'Unauthorized' });
+    }
+
+    // Pagination - default is 0 if not specified
+    const page = parseInt(req.query.page) || 0;
+    const pageSize = 20; // TESTED WITH 5
+    const skip = page * pageSize;
+
+    // Find all files by userId or parentId
+    try {
+      const userFiles = dbClient.db.collection('files');
+      const parentId = req.query.parentId;
+
+      // Set query to userId as default
+      let query = { userId: new ObjectID(userId) }
+
+      // Search by parentId if there is one
+      if (parentId) {
+        query.parentId = new ObjectID(parentId);
+        // ParentId isn't linked to existing files
+        const filesWithParent = await userFiles.findOne({ userId: new ObjectID(userId), parentId: new ObjectID(parentId) });
+
+        if (!filesWithParent) {
+          return res.status(200).send([]); // send empty array
+        }
+      }
+
