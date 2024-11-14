@@ -54,3 +54,37 @@ class AuthController {
   }
 
 
+// Removes Authentication Token from Redis
+static async getDisconnect(req, res) {
+
+    const token = req.headers['x-token'];
+
+    // No token provided: 401
+    if (!token) {
+      return res.status(401).send({ error: 'Unauthorized. No Token Provided' });
+    }
+
+    // Remove the existing token from Redis Storage
+    try {
+      // Wait for Redis to return existing token
+      const fullToken = `auth_${token}`;
+      const existingToken = await redisClient.get(fullToken);
+
+      // No token found: 401
+      if (!existingToken) {
+        return res.status(401).send({ error: 'Unauthorized. No Token Found' });
+      }
+
+      // Wait for Redis to delete existing token
+      await redisClient.del(fullToken);
+
+      // Response from server
+      return res.status(204).send();
+    } catch (err) {
+      console.error(err);
+    }
+  }
+}
+
+// Export
+export default AuthController;
