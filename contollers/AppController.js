@@ -5,13 +5,12 @@ import dbClient from '../utils/db.js';
 class AppController {
 
 
-  // Checks if Redis/DB are active
   static async getStatus(req, res) {
-    // Connect to both Redis and DB concurrently
+
     const redisStatus = await redisClient.isAlive();
     const dbStatus = await dbClient.isAlive();
 
-    // Return correct response based on db status
+
     if (redisStatus && dbStatus) {
       res.status(200).send({ "redis": true, "db": true });
     } else if (!redisStatus && dbStatus) {
@@ -23,7 +22,7 @@ class AppController {
     }
   }
 
-  // Add controller method to retrieve user and file statistics
+
   static async getStats(req, res) {
     const users = await dbClient.nbUsers();
     const files = await dbClient.nbFiles();
@@ -32,5 +31,5 @@ class AppController {
   }
 }
 
-// Export
+
 export default AppController;
