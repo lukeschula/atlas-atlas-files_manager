@@ -256,4 +256,45 @@ class FilesController {
           return res.status(200).send([]); // send empty array
         }
       }
+       // Implement Pagination
+       const aggregateQuery = [
+        { $match: query },
+        { $skip: skip },
+        { $limit: pageSize }
+      ];
+
+      const allFiles = await userFiles.aggregate(aggregateQuery).toArray();
+      return res.status(200).send(allFiles);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // Publishes a document
+  static async putPublish(req, res) {
+    // Authenticate Current User
+    let userId;
+
+    // Authenticate User
+    try {
+      const token = req.headers['x-token'];
+
+      // Returns token from Redis
+      const fullToken = `auth_${token}`;
+      userId = await redisClient.get(fullToken);
+
+      // Returns userId from MongoDB
+      const userDocs = dbClient.db.collection('users');
+      const existingUser = await userDocs.findOne({ _id: ObjectID(userId) });
+
+      // User does not exist: 401
+      if (!existingUser) {
+        throw err;
+      }
+    } catch (err) {
+      console.error(err);
+      res.status(401).send({ error: 'Unauthorized' });
+    }
+
+
 
