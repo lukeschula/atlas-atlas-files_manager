@@ -31,3 +31,6 @@ class AppController {
     res.status(200).send({ "users": users, "files": files })
   }
 }
+
+// Export
+export default AppController;
