@@ -163,3 +163,47 @@ class FilesController {
       }
     }
 
+    // Retrieves File Document Based _id
+  static async getShow(req, res) {
+    // Authorize User by Token (current user)
+
+    let userId;
+
+    try {
+      const token = req.headers['x-token'];
+
+      // Returns token from Redis
+      const fullToken = `auth_${token}`;
+      userId = await redisClient.get(fullToken);
+
+      // Returns userId from MongoDB
+      const userDocs = dbClient.db.collection('users');
+      const existingUser = await userDocs.findOne({ _id: ObjectID(userId) });
+
+      // User does not exist: 401
+      if (!existingUser) {
+        throw err;
+      }
+    } catch (err) {
+      console.error(err);
+      return res.status(401).send({ error: 'Unauthorized' });
+    }
+
+    // Find a file based on userId from GET (owner)
+    try {
+      const fileId = req.params.id;
+      console.log(`File ID param from Curl: ${fileId}`);
+      const fileDocs = dbClient.db.collection('files');
+      const existingFile = await fileDocs.findOne({ _id: ObjectID(fileId), userId: ObjectID(userId) });
+
+      // File does not exist: 401
+      if (!existingFile) {
+        throw new Error('Not found');
+      }
+      return res.status(200).send(existingFile);
+    } catch (err) {
+      console.error(err);
+      return res.status(404).send({ error: 'Not found' });
+    }
+  }
+
