@@ -295,6 +295,164 @@ class FilesController {
       console.error(err);
       res.status(401).send({ error: 'Unauthorized' });
     }
+    // Update isPublic to true if file is present
+    try {
+
+        // Define Parameters
+        const fileId = req.params.id;
+        const fileDocs = dbClient.db.collection('files');
+        const existingFile = await fileDocs.findOne({ _id: ObjectID(fileId), userId: ObjectID(userId) });
+
+        // If no file with matching file id and user id - 404
+        if (!existingFile) {
+          throw err;
+        }
+
+        // Change isPublic to true
+        fileDocs.updateOne({ _id: ObjectID(fileId) }, { $set: { isPublic: true } });
+        const updatedFile = await fileDocs.findOne({ _id: ObjectID(fileId) });
+
+        // Return file document
+        return res.status(200).send(updatedFile);
+
+      } catch (err) {
+        console.error(err)
+        res.status(404).send({ error: 'Not found' });
+      }
+    }
+
+    // Unpublishes a document
+    static async putUnpublish(req, res) {
+      // Authenticate Current User
+      let userId;
+
+      try {
+        const token = req.headers['x-token'];
+
+        // Returns token from Redis
+        const fullToken = `auth_${token}`;
+        userId = await redisClient.get(fullToken);
+
+        // Returns userId from MongoDB
+        const userDocs = dbClient.db.collection('users');
+        const existingUser = await userDocs.findOne({ _id: ObjectID(userId) });
+
+        // User does not exist: 401
+        if (!existingUser) {
+          throw err;
+        }
+      } catch (err) {
+        console.error(err);
+        res.status(401).send({ error: 'Unauthorized' });
+      }
+
+      // Update isPublic to false if file is present
+      try {
+
+        // Define Parameters
+        const fileId = req.params.id;
+        const fileDocs = dbClient.db.collection('files');
+        const existingFile = await fileDocs.findOne({ _id: ObjectID(fileId), userId: ObjectID(userId) });
+
+        // If no file with matching file id and user id - 404
+        if (!existingFile) {
+          throw err;
+        }
+
+        // Change isPublic to false
+        fileDocs.updateOne({ _id: ObjectID(fileId) }, { $set: { isPublic: false } });
+        const updatedFile = await fileDocs.findOne({ _id: ObjectID(fileId) });
+
+        // Return file document
+        return res.status(200).send(updatedFile);
+
+      } catch (err) {
+        console.error(err)
+        res.status(404).send({ error: 'Not found' });
+      }
+    }
+
+    // Returns content of file
+    static async getFile(req, res) {
+      // Authenticate Current User
+      let userId;
+
+      // Authenticate User
+      try {
+        const token = req.headers['x-token'];
+
+        // Returns token from Redis
+        const fullToken = `auth_${token}`;
+        userId = await redisClient.get(fullToken);
+
+        // Returns userId from MongoDB
+        const userDocs = dbClient.db.collection('users');
+        const existingUser = await userDocs.findOne({ _id: ObjectID(userId) });
+
+        // User does not exist: 401
+        if (!existingUser) {
+          throw err;
+        }
+      } catch (err) {
+        console.error(err);
+        res.status(404).send({ error: 'Not found' });
+      }
+
+      // Return file Data
+      try {
+        // Define Parameters
+        const fileID = req.params.id;
+
+        // If no file with matching file id and user id - 404
+        const fileDocs = dbClient.db.collection('files');
+        const existingFile = await fileDocs.findOne({ _id: ObjectID(fileID), userId: ObjectID(userId) });
+
+        if (!existingFile) {
+          throw new Error();
+        }
+
+        // If file is of type 'folder' - 400
+        if (existingFile.type === 'folder') {
+          return res.status(400).send('A folder doesn\'t have content');
+        }
+
+        const fileOwner = existingFile.userId.toString();
+        // If isPublic is false and user isn't the owner of the file - 404
+        if (existingFile.isPublic === false && fileOwner !== userId) {
+          throw new Error('This error?');
+        }
+
+        // If file is not locally present - 404
+        if (!fs.existsSync(existingFile.localPath)) {
+          throw new Error();
+        }
+
+        // Determine type of file based on 'name' using mime-type
+        const mimeType = mime.lookup(existingFile.name);
+        const charSet = mime.charset(mimeType);
+        const fileData = fs.readFileSync(existingFile.localPath, charSet, (err, data) => {
+          if (err) {
+            console.error(err);
+          } else {
+            console.log('file read successfully');
+            return data;
+          }
+        });
+
+        // Return file data with correct mime-type
+        res.setHeader('content-type', mimeType);
+        return res.status(200).send(fileData);
+
+      } catch (err) {
+        console.error(err)
+        res.status(404).send({ error: 'Not found' });
+      }
+    }
+  }
+
+  // Export
+  export default FilesController;
+  // 278ac3a7-ee41-4341-ba5f-88c864111099
 
 
 
